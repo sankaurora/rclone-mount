@@ -1,0 +1,29 @@
+#!/command/with-contenv sh
+
+set -eu
+
+. /etc/colors.sh
+
+PREFIX="[s6-rc] [rclone-mount]-finish:"
+
+if [ "$1" -eq 256 ]; then
+    SERVICE_EXIT_CODE=$((128 + $2))
+else
+    SERVICE_EXIT_CODE="$1"
+fi
+
+if [ "$1" -eq 256 ] && [ "$2" -eq 15 ]; then
+    CONTAINER_EXIT_CODE=0
+else
+    CONTAINER_EXIT_CODE="${SERVICE_EXIT_CODE}"
+fi
+
+printf '%s\n' "${CONTAINER_EXIT_CODE}" > /run/s6-linux-init-container-results/exitcode
+
+if [ "${CONTAINER_EXIT_CODE}" -eq 0 ]; then
+    printf '%b\n' "${PREFIX} ${Yellow}rclone mount stopped${Color_Off}"
+else
+    printf '%b\n' "${PREFIX} ${Red}rclone mount exited with code ${SERVICE_EXIT_CODE}, halting container${Color_Off}"
+fi
+
+exec /run/s6/basedir/bin/halt

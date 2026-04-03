@@ -1,0 +1,24 @@
+#!/command/with-contenv sh
+
+set -eu
+
+. /etc/colors.sh
+
+PREFIX="[s6-rc] [rclone-mount-prepare]-down:"
+
+printf '%b\n' "${PREFIX} ${Yellow}checking mount state during shutdown${Color_Off}"
+
+if awk -v remote="${RemotePath}" -v mountpoint="${MountPoint}" '
+    $1 == remote && $2 == mountpoint { found = 1; exit }
+    END { exit found ? 0 : 1 }
+' /proc/mounts; then
+    printf '%b\n' "${PREFIX} ${Red}force unmounting with fusermount ${UnmountCommands} at: $(date +%Y.%m.%d-%T)${Color_Off}"
+    # Keep unmount flags split into individual CLI arguments.
+    fusermount ${UnmountCommands} "${MountPoint}"
+fi
+
+if umount "${MountPoint}" 2>/dev/null; then
+    printf '%b\n' "${PREFIX} ${Green}successful unmounted${Color_Off}"
+else
+    printf '%b\n' "${PREFIX} ${Green}mount namespace already clean${Color_Off}"
+fi

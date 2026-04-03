@@ -1,0 +1,17 @@
+#!/command/with-contenv sh
+
+set -eu
+
+. /etc/colors.sh
+
+PREFIX="[s6-rc] [rclone-mount]-run:"
+CONFIG_PATH="${ConfigDir}/${ConfigName}"
+
+printf '%b\n' "${PREFIX} ${Green}starting rclone mount $(date +%Y.%m.%d-%T)${Color_Off}"
+
+if [ "${DEBUG}" = "true" ]; then
+    printf '%b\n' "${PREFIX} [DEBUG] command: /usr/local/sbin/rclone --config ${CONFIG_PATH} mount ${RemotePath} ${MountPoint} ${MountCommands}"
+fi
+
+# Keep mount flags split into individual CLI arguments.
+exec /usr/local/sbin/rclone --config "${CONFIG_PATH}" mount "${RemotePath}" "${MountPoint}" ${MountCommands}

@@ -1,0 +1,37 @@
+#!/command/with-contenv sh
+
+set -eu
+
+. /etc/colors.sh
+
+PREFIX="[s6-rc] [rclone-mount-prepare]-up:"
+OS=""
+
+detect_os() {
+    if [ -e /etc/alpine-release ]; then
+        OS="alpine"
+    elif [ -e /etc/os-release ] && grep -q 'NAME="Ubuntu"' /etc/os-release; then
+        OS="ubuntu"
+    fi
+}
+
+auto_upgrade() {
+    if [ "${OS}" = "alpine" ]; then
+        /sbin/apk --no-cache upgrade
+        /bin/rm -rf /var/cache/apk/*
+    elif [ "${OS}" = "ubuntu" ]; then
+        export DEBIAN_FRONTEND=noninteractive
+        /usr/bin/apt-get update
+        /usr/bin/apt-get -y --no-install-recommends dist-upgrade
+        /usr/bin/apt-get -y autoclean
+        /usr/bin/apt-get -y clean
+        /usr/bin/apt-get -y autoremove
+        /bin/rm -rf /var/lib/apt/lists/*
+    fi
+}
+
+mkdir -p "${MountPoint}" "${ConfigDir}"
+
+printf '%b\n' "${PREFIX} ${Blue}installing system updates${Color_Off}"
+detect_os
+auto_upgrade

@@ -1,0 +1,21 @@
+#!/command/with-contenv sh
+
+set -eu
+
+. /etc/colors.sh
+
+PREFIX="[s6-rc] [rclone-mount-check]-up:"
+
+if [ -n "$(ls -A "${MountPoint}" 2>/dev/null)" ]; then
+    printf '%b\n' "${PREFIX} ${Red}MountPoint folder not empty[ERROR]${Color_Off}"
+fi
+
+if awk -v remote="${RemotePath}" -v mountpoint="${MountPoint}" '
+    $1 == remote && $2 == mountpoint { found = 1; exit }
+    END { exit found ? 0 : 1 }
+' /proc/mounts; then
+    printf '%b\n' "${PREFIX} ${Red}found other MountPoint in /proc/mounts${Color_Off}"
+    exit 1
+fi
+
+printf '%b\n' "${PREFIX} ${Green}MountPoint ${MountPoint} is ready${Color_Off}"
