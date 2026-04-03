@@ -3,15 +3,66 @@
 set -eu
 
 . /etc/colors.sh
+. /etc/rclone-mount-lib.sh
 
 PREFIX="[s6-rc] [rclone-mount]-run:"
-CONFIG_PATH="${ConfigDir}/${ConfigName}"
+CONFIG_PATH="$(config_path)"
+MOUNT_READY_TIMEOUT="${MountReadyTimeout:-30}"
+RCLONE_PID=""
+
+forward_signal() {
+    if [ -n "${RCLONE_PID}" ] && kill -0 "${RCLONE_PID}" 2>/dev/null; then
+        kill -TERM "${RCLONE_PID}" 2>/dev/null || true
+    fi
+}
+
+trap forward_signal INT TERM HUP
 
 printf '%b\n' "${PREFIX} ${Green}starting rclone mount $(date +%Y.%m.%d-%T)${Color_Off}"
 
 if [ "${DEBUG}" = "true" ]; then
     printf '%b\n' "${PREFIX} [DEBUG] command: /usr/local/sbin/rclone --config ${CONFIG_PATH} mount ${RemotePath} ${MountPoint} ${MountCommands}"
+    printf '%b\n' "${PREFIX} [DEBUG] mount ready timeout: ${MOUNT_READY_TIMEOUT}s"
 fi
 
 # Keep mount flags split into individual CLI arguments.
-exec /usr/local/sbin/rclone --config "${CONFIG_PATH}" mount "${RemotePath}" "${MountPoint}" ${MountCommands}
+/usr/local/sbin/rclone --config "${CONFIG_PATH}" mount "${RemotePath}" "${MountPoint}" ${MountCommands} &
+RCLONE_PID="$!"
+
+mount_ready=0
+deadline=$(( $(date +%s) + MOUNT_READY_TIMEOUT ))
+
+while kill -0 "${RCLONE_PID}" 2>/dev/null; do
+    if mount_present; then
+        mount_ready=1
+        printf '%b\n' "${PREFIX} ${Green}mount ready at ${MountPoint}${Color_Off}"
+        break
+    fi
+
+    if [ "$(date +%s)" -ge "${deadline}" ]; then
+        printf '%b\n' "${PREFIX} ${Red}mount did not appear within ${MOUNT_READY_TIMEOUT}s[ERROR]${Color_Off}"
+        kill -TERM "${RCLONE_PID}" 2>/dev/null || true
+        sleep 1
+        kill -KILL "${RCLONE_PID}" 2>/dev/null || true
+        wait "${RCLONE_PID}" 2>/dev/null || true
+        exit 1
+    fi
+
+    sleep 1
+done
+
+if [ "${mount_ready}" -eq 0 ]; then
+    rc=0
+    wait "${RCLONE_PID}" || rc=$?
+
+    if [ "${rc}" -eq 0 ]; then
+        printf '%b\n' "${PREFIX} ${Red}rclone exited before mount became ready[ERROR]${Color_Off}"
+        exit 1
+    fi
+
+    exit "${rc}"
+fi
+
+rc=0
+wait "${RCLONE_PID}" || rc=$?
+exit "${rc}"

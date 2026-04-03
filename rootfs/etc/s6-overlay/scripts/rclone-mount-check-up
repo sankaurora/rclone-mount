@@ -3,17 +3,27 @@
 set -eu
 
 . /etc/colors.sh
+. /etc/rclone-mount-lib.sh
 
 PREFIX="[s6-rc] [rclone-mount-check]-up:"
+CONFIG_PATH="$(config_path)"
+
+if [ -z "${RemotePath}" ]; then
+    printf '%b\n' "${PREFIX} ${Red}RemotePath is empty[ERROR]${Color_Off}"
+    exit 1
+fi
+
+if [ ! -f "${CONFIG_PATH}" ]; then
+    printf '%b\n' "${PREFIX} ${Red}missing rclone config at ${CONFIG_PATH}[ERROR]${Color_Off}"
+    exit 1
+fi
 
 if [ -n "$(ls -A "${MountPoint}" 2>/dev/null)" ]; then
     printf '%b\n' "${PREFIX} ${Red}MountPoint folder not empty[ERROR]${Color_Off}"
+    exit 1
 fi
 
-if awk -v remote="${RemotePath}" -v mountpoint="${MountPoint}" '
-    $1 == remote && $2 == mountpoint { found = 1; exit }
-    END { exit found ? 0 : 1 }
-' /proc/mounts; then
+if mount_present; then
     printf '%b\n' "${PREFIX} ${Red}found other MountPoint in /proc/mounts${Color_Off}"
     exit 1
 fi

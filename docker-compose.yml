@@ -1,7 +1,6 @@
-version: '2'
 services:
   mount-rclone01:
-    image: mumiehub/rclone-mount:latest
+    image: ghcr.io/<owner>/<repo>:latest
 #    privileged: true
     cap_add:
     - SYS_ADMIN
@@ -9,11 +8,14 @@ services:
     - /dev/fuse
     security_opt:
     - apparmor:unconfined
+    # Podman on SELinux hosts may also need:
+    # - label=disable
     environment:
       RemotePath: 'mediaefs:'
+      MountReadyTimeout: 30
       MountCommands: --allow-other --uid 1000 --gid 1000 --umask 022 --default-permissions --allow-non-empty --dir-cache-time 168h --poll-interval 5m --buffer-size 128M
     stdin_open: true
     tty: true
     volumes:
     - /path/to/config:/config
-    - /host/mount/point:/mnt/mediaefs:shared
+    - /host/mount/point:/mnt/mediaefs:rshared

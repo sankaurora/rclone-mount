@@ -69,6 +69,7 @@ ENV DEBUG="false" \
     MountPoint="/mnt/mediaefs" \
     ConfigDir="/config" \
     ConfigName=".rclone.conf" \
+    MountReadyTimeout="30" \
     MountCommands="--allow-other --allow-non-empty" \
     UnmountCommands="-u -z" \
     S6_BEHAVIOUR_IF_STAGE2_FAILS="2"
@@ -80,15 +81,16 @@ COPY rootfs/ /
 
 RUN apk add --no-cache ca-certificates fuse3 \
     && ln -sf /usr/bin/fusermount3 /usr/bin/fusermount \
+    && chmod +x /healthcheck.sh \
     && chmod +x /etc/s6-overlay/scripts/* \
     /etc/s6-overlay/s6-rc.d/rclone-mount/run \
     /etc/s6-overlay/s6-rc.d/rclone-mount/finish
 
-VOLUME ["/mnt"]
+HEALTHCHECK --interval=30s --timeout=5s --start-period=20s --retries=3 CMD ["/healthcheck.sh"]
 
 ENTRYPOINT ["/init"]
 
 # Use this docker Options in run
 # --cap-add SYS_ADMIN --device /dev/fuse --security-opt apparmor:unconfined
 # -v /path/to/config/.rclone.conf:/config/.rclone.conf
-# -v /mnt/mediaefs:/mnt/mediaefs:shared
+# -v /mnt/mediaefs:/mnt/mediaefs:rshared
