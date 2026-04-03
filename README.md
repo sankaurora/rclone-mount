@@ -4,9 +4,13 @@
 
 ## Rclone Mount Container
 
-Lightweight and simple Container Image (`alpine:latest - 58MB`) with compiled rclone (https://github.com/ncw/rclone). Mount your cloud storage like google drive inside a container and make it available to other containers like your Plex Server or on your hostsystem (mount namespace on the host is shared). You need a working rclone.conf (from another host or create it inside the container with entrypoint /bin/sh). all rclone remotes can be used.
+Lightweight and simple container image with compiled `rclone` (https://github.com/ncw/rclone). The runtime image uses Alpine with a stripped static `rclone` binary, `fuse3`, and `s6-overlay`. Mount your cloud storage like google drive inside a container and make it available to other containers like your Plex Server or on your hostsystem (mount namespace on the host is shared). You need a working rclone.conf (from another host or create it inside the container with entrypoint /bin/sh). all rclone remotes can be used.
 
 The Container uses `s6-overlay` with `s6-rc` to handle docker stop/restart ( `fusermount -uz $MountPoint` is applied on app crashes also) and also preparing the mountpoint.
+
+## GitHub Actions
+
+The repository includes a GitHub Actions workflow at `.github/workflows/build-latest-rclone.yml`. It resolves the latest upstream `rclone` release, builds the container image with that version, and publishes `latest` plus the upstream `vX.Y.Z` tag to `ghcr.io/<owner>/<repo>`.
 
 # Usage Example:
 
@@ -19,7 +23,7 @@ The Container uses `s6-overlay` with `s6-rc` to handle docker stop/restart ( `fu
         -e MountCommands="--allow-other --allow-non-empty" \
         -v /path/to/config:/config \
         -v /host/mount/point:/mnt/mediaefs:shared \
-        mumiehub/rclone-mount
+        ghcr.io/<owner>/<repo>:latest
 
 > mandatory docker commands:
 
@@ -52,7 +56,7 @@ All Commands can be found at [https://rclone.org/commands/rclone_mount/](https:/
 
 ## Troubleshooting:
 
-When you force remove the container, you have to `sudo fusermount -u -z /host/mount/point` on the hostsystem!
+When you force remove the container, you have to `sudo fusermount3 -u -z /host/mount/point` on the hostsystem (or `fusermount` on hosts that still provide the legacy name).
 
 ## Todo
 
