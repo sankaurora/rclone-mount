@@ -42,18 +42,18 @@ jobs:
         run: |
           set -euo pipefail
           version="$(python3 - <<'PY'
-import json
-import urllib.request
+          import json
+          import urllib.request
 
-request = urllib.request.Request(
-    "https://api.github.com/repos/rclone/rclone/releases/latest",
-    headers={"Accept": "application/vnd.github+json"},
-)
-with urllib.request.urlopen(request) as response:
-    release = json.load(response)
+          request = urllib.request.Request(
+              "https://api.github.com/repos/rclone/rclone/releases/latest",
+              headers={"Accept": "application/vnd.github+json"},
+          )
+          with urllib.request.urlopen(request) as response:
+              release = json.load(response)
 
-print(release["tag_name"])
-PY
+          print(release["tag_name"])
+          PY
           )"
 
           if [ -z "${version}" ]; then
